@@ -1,18 +1,49 @@
 // src/middleware/auth/requireRole.ts
 import { Request, Response, NextFunction } from 'express';
-import { AnyRole } from '../../types/roles.js';
+import { AnyRole, PlatformRole } from '../../types/roles.js';
 
-export const requireRole = (allowedRoles: AnyRole[]) => {
+interface RequireRoleOptions {
+  allowedRoles: AnyRole[];
+  allowSuperadmin?: boolean;
+}
+
+/**
+ * Accept either:
+ *  • an array of roles, e.g. requireRole([R.Owner, R.Manager])
+ *  • an options object, e.g. requireRole({ allowedRoles: [R.Owner], allowSuperadmin: true })
+ */
+export function requireRole(
+  opts: AnyRole[] | RequireRoleOptions
+): (req: Request, res: Response, next: NextFunction) => void {
+  const { allowedRoles, allowSuperadmin } = Array.isArray(opts)
+    ? { allowedRoles: opts, allowSuperadmin: false }
+    : opts;
+
+  const normalizedAllowed = allowedRoles.map(r => r.toString().trim().toLowerCase());
+
   return (req: Request, res: Response, next: NextFunction): void => {
-    const user = req.user;
-    if (!user) {
+    const user = req.user as { role?: string } | undefined;
+    if (!user || !user.role) {
       res.status(401).json({ message: 'Unauthenticated' });
       return;
     }
-    if (!allowedRoles.includes(user.role as AnyRole)) {
-      res.status(403).json({ message: 'Forbidden: insufficient privileges' });
+
+    const incoming = user.role.trim().toLowerCase();
+
+    // Superadmin bypass
+    if (allowSuperadmin && incoming === PlatformRole.Superadmin) {
+      next();
       return;
     }
-    next();
+
+    // Allowed restaurant roles
+    if (normalizedAllowed.includes(incoming)) {
+      next();
+      return;
+    }
+
+    // If we fall through, it’s forbidden
+    res.status(403).json({ message: 'Forbidden: insufficient privileges' });
+    return;
   };
-};
+}

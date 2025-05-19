@@ -1,11 +1,23 @@
 // src/routes/user.routes.ts
 import { Router } from 'express';
-import { getMe } from '../controllers/user.controller.js';
+import { getMe, createUser } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middleware/auth/verifyJWT.js';
+import { requireRole } from '../middleware/auth/requireRole.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
+import { RestaurantRole } from '../types/roles.js';
 
 const router = Router();
 
-/** Protected route returning the authenticated user */
-router.get('/me', verifyJWT, getMe);
+router.get('/me', verifyJWT, asyncHandler(getMe));
+
+router.post(
+  '/',
+  verifyJWT,
+  requireRole({
+    allowedRoles: [RestaurantRole.Owner, RestaurantRole.Manager],
+    allowSuperadmin: true,
+  }),
+  asyncHandler(createUser),
+);
 
 export default router;

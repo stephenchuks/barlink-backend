@@ -5,10 +5,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 
-// POST /api/auth/register
 router.post('/register', asyncHandler(register));
-
-// POST /api/auth/login
-router.post('/login', asyncHandler(login));
+router.post('/login',    asyncHandler(login));
 
 export default router;

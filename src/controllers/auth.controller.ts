@@ -1,17 +1,16 @@
 // src/controllers/auth.controller.ts
-import { RequestHandler } from 'express';
+import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import jwt, { SignOptions, Secret } from 'jsonwebtoken';
-import UserModel from '../models/User.js';
+import jwt, { Secret, SignOptions } from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import UserModel, { PlatformUser, RestaurantUser } from '../models/User.js';
 import { PlatformRole, RestaurantRole } from '../types/roles.js';
 
 const JWT_SECRET = process.env.JWT_SECRET as Secret;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN as SignOptions['expiresIn'];
 
-/**
- * POST /api/auth/register
- */
-export const register: RequestHandler = async (req, res) => {
+// REGISTER
+export const register = async (req: Request, res: Response): Promise<void> => {
   const { email, password, role, restaurant } = req.body as {
     email?: string;
     password?: string;
@@ -36,18 +35,23 @@ export const register: RequestHandler = async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const userDoc = isRestaurantRole
-    ? { email, passwordHash, role, restaurant }
-    : { email, passwordHash, role };
 
-  await UserModel.create(userDoc);
+  if (isRestaurantRole) {
+    await RestaurantUser.create({
+      email,
+      passwordHash,
+      role,
+      restaurant: new mongoose.Types.ObjectId(restaurant!),
+    });
+  } else {
+    await PlatformUser.create({ email, passwordHash, role });
+  }
+
   res.status(201).json({ message: 'User registered successfully' });
 };
 
-/**
- * POST /api/auth/login
- */
-export const login: RequestHandler = async (req, res) => {
+// LOGIN
+export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body as { email?: string; password?: string };
 
   if (!email || !password) {
@@ -67,13 +71,13 @@ export const login: RequestHandler = async (req, res) => {
     return;
   }
 
-  // Build sign options, casting our string into ms.StringValue
-  const signOptions: SignOptions = {
-    expiresIn: JWT_EXPIRES_IN as unknown as SignOptions['expiresIn'],
-  };
+  const userId = (user._id as mongoose.Types.ObjectId).toString();
 
-  const payload = { userId: user.id, role: user.role };
-  const token = jwt.sign(payload, JWT_SECRET, signOptions);
+  const token = jwt.sign(
+    { userId, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN } as SignOptions,
+  );
 
   res.status(200).json({ token });
 };
