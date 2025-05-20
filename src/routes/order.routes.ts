@@ -1,44 +1,37 @@
 // src/routes/order.routes.ts
 import { Router } from 'express';
 import {
-  placeOrder,
+  createOrder,
   getOrder,
   listRestaurantOrders,
   updateOrderStatus,
 } from '../controllers/order.controller.js';
-import { asyncHandler } from '../middleware/asyncHandler.js';
-import { verifyJWT } from '../middleware/auth/verifyJWT.js';
-import { requireRole } from '../middleware/auth/requireRole.js';
-import { RestaurantRole, PlatformRole } from '../types/roles.js';
+import { verifyJWT }    from '../middleware/auth/verifyJWT.js';
+import { requireRole }  from '../middleware/auth/requireRole.js';
+import { CustomerRole, RestaurantRole } from '../types/roles.js';
 
 const router = Router();
 
-/**
- * Customer‑facing: place a new order
- * POST /api/orders
- */
+// Customer places an order
 router.post(
   '/',
-  asyncHandler(verifyJWT),
-  requireRole({
-    allowedRoles: [
-      RestaurantRole.Owner,
-      RestaurantRole.Manager,
-      RestaurantRole.Supervisor,
-      RestaurantRole.Server,
-    ],
-    allowSuperadmin: true,
-  }),
-  asyncHandler(placeOrder),
+  verifyJWT,
+  requireRole({ allowedRoles: [CustomerRole.Customer], allowSuperadmin: false }),
+  createOrder,
 );
 
-/**
- * Customer‑facing: view your order
- * GET /api/orders/:id
- */
+// Customer checks own order
 router.get(
   '/:id',
-  asyncHandler(verifyJWT),
+  verifyJWT,
+  requireRole({ allowedRoles: [CustomerRole.Customer], allowSuperadmin: false }),
+  getOrder,
+);
+
+// Staff fetches all restaurant orders
+router.get(
+  '/restaurant/:id',
+  verifyJWT,
   requireRole({
     allowedRoles: [
       RestaurantRole.Owner,
@@ -48,35 +41,23 @@ router.get(
     ],
     allowSuperadmin: true,
   }),
-  asyncHandler(getOrder),
+  listRestaurantOrders,
 );
 
-/**
- * Staff‑facing: list pending orders for a restaurant
- * GET /api/restaurants/:id/orders
- */
-router.get(
-  '/restaurants/:id',
-  asyncHandler(verifyJWT),
-  requireRole({
-    allowedRoles: [RestaurantRole.Owner, RestaurantRole.Manager],
-    allowSuperadmin: true,
-  }),
-  asyncHandler(listRestaurantOrders),
-);
-
-/**
- * Mark as served OR paid (we’ll use patch for both)
- * PATCH /api/orders/:id
- */
+// Staff updates order status
 router.patch(
   '/:id',
-  asyncHandler(verifyJWT),
+  verifyJWT,
   requireRole({
-    allowedRoles: [RestaurantRole.Owner, RestaurantRole.Manager],
+    allowedRoles: [
+      RestaurantRole.Owner,
+      RestaurantRole.Manager,
+      RestaurantRole.Supervisor,
+      RestaurantRole.Server,
+    ],
     allowSuperadmin: true,
   }),
-  asyncHandler(updateOrderStatus),
+  updateOrderStatus,
 );
 
 export default router;

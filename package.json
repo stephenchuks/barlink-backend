@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
+    "reset:db": "ts-node src/scripts/resetDb.ts",
+    "seed": "ts-node src/scripts/seedDb.ts",
     "start": "node dist/server.js",
     "build": "tsc",
     "lint": "eslint . --ext .ts",

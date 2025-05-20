@@ -12,13 +12,20 @@ export enum PlatformRole {
  * Restaurant‑level roles (per‑tenant)
  */
 export enum RestaurantRole {
-  Owner      = 'owner',      // full control of a single restaurant/bar
+  Owner      = 'owner',
   Manager    = 'manager',
   Supervisor = 'supervisor',
   Server     = 'server',
 }
 
 /**
+ * Customer‑facing roles (un‑authenticated customers)
+ */
+export enum CustomerRole {
+  Customer = 'customer',
+}
+
+/**
  * Union type when you need to accept any role
  */
-export type AnyRole = PlatformRole | RestaurantRole;
+export type AnyRole = PlatformRole | RestaurantRole | CustomerRole;

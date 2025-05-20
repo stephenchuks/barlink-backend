@@ -1,56 +1,45 @@
 // src/controllers/order.controller.ts
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import OrderModel, { OrderStatus, IOrderItem } from '../models/Order.js';
+import OrderModel, { IOrder, OrderStatus } from '../models/Order.js';
 
 const toObjectId = (id: string) => new mongoose.Types.ObjectId(id);
 
 /**
+ * Customer places an order
  * POST /api/orders
- * Body:
- *   {
- *     restaurant?: string,     // optional if user is tied to one
- *     items: [
- *       { menuItem: string, quantity: number, price: number },
- *       …
- *     ]
- *   }
  */
-export const placeOrder = async (req: Request, res: Response): Promise<void> => {
-  const restaurant = typeof req.body.restaurant === 'string'
-    ? req.body.restaurant
-    : (req.user as any).restaurant;
-  const userId     = (req.user as any).id;
-  const rawItems   = req.body.items as Array<{ menuItem: string; quantity: number; price: number }>;
+export const createOrder = async (req: Request, res: Response): Promise<void> => {
+  // restaurant context from token
+  const restaurantId = req.user!.restaurant!;
+  const userId       = req.user!.id;
 
-  if (!restaurant || !Array.isArray(rawItems) || rawItems.length === 0) {
-    res.status(400).json({ message: 'restaurant + items required' });
+  const { items } = req.body as { items?: Array<{ menuItem: string; quantity: number; price: number }> };
+
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ message: 'Order items are required' });
     return;
   }
 
-  // Compute total from passed prices
-  let total = 0;
-  const items: IOrderItem[] = rawItems.map((it) => {
-    total += it.quantity * it.price;
-    return {
-      menuItem: toObjectId(it.menuItem),
-      quantity: it.quantity,
-      price:    it.price,
-    };
-  });
+  // compute total
+  const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
 
   const order = await OrderModel.create({
-    restaurant: toObjectId(restaurant),
+    restaurant: toObjectId(restaurantId),
     user:       toObjectId(userId),
-    items,
+    items:      items.map(i => ({
+      menuItem: toObjectId(i.menuItem),
+      quantity: i.quantity,
+      price:    i.price,
+    })),
     total,
-    status:     OrderStatus.Pending,
   });
 
   res.status(201).json(order);
 };
 
 /**
+ * Customer or staff fetch a single order
  * GET /api/orders/:id
  */
 export const getOrder = async (req: Request, res: Response): Promise<void> => {
@@ -59,29 +48,37 @@ export const getOrder = async (req: Request, res: Response): Promise<void> => {
     res.status(404).json({ message: 'Order not found' });
     return;
   }
+
+  // If customer, ensure they own it
+  if (req.user!.role === 'customer' && order.user.toString() !== req.user!.id) {
+    res.status(403).json({ message: 'Forbidden' });
+    return;
+  }
+
   res.status(200).json(order);
 };
 
 /**
- * GET /api/restaurants/:id/orders
+ * Staff fetches all orders for their restaurant
+ * GET /api/orders/restaurant/:id
  */
 export const listRestaurantOrders = async (req: Request, res: Response): Promise<void> => {
   const restaurantId = req.params.id;
-  const orders = await OrderModel.find({
-    restaurant: restaurantId,
-    status:     OrderStatus.Pending,
-  }).exec();
+  const orders = await OrderModel.find({ restaurant: toObjectId(restaurantId) })
+    .sort('-createdAt')
+    .exec();
   res.status(200).json(orders);
 };
 
 /**
+ * Staff updates an order's status
  * PATCH /api/orders/:id
- * Body: { status: OrderStatus }
  */
 export const updateOrderStatus = async (req: Request, res: Response): Promise<void> => {
   const { status } = req.body as { status?: OrderStatus };
+
   if (!status || !Object.values(OrderStatus).includes(status)) {
-    res.status(400).json({ message: 'Valid status required' });
+    res.status(400).json({ message: 'Valid status is required' });
     return;
   }
 

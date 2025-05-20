@@ -1,8 +1,6 @@
 // src/middleware/auth/verifyJWT.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import UserModel from '../../models/User.js';          // ← two-level up
-import { RestaurantRole } from '../../types/roles.js'; // ← two-level up
 
 declare global {
   namespace Express {
@@ -19,15 +17,12 @@ declare global {
 interface JwtPayload {
   userId: string;
   role: string;
+  restaurant?: string;
   iat: number;
   exp: number;
 }
 
-export const verifyJWT = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
+export const verifyJWT = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ message: 'Missing or malformed Authorization header' });
@@ -35,29 +30,16 @@ export const verifyJWT = async (
   }
 
   const token = authHeader.split(' ')[1];
-  let payload: JwtPayload;
   try {
-    payload = jwt.verify(token, process.env.JWT_SECRET as jwt.Secret) as JwtPayload;
+    const secret = process.env.JWT_SECRET as jwt.Secret;
+    const payload = jwt.verify(token, secret) as JwtPayload;
+    req.user = {
+      id: payload.userId,
+      role: payload.role,
+      restaurant: payload.restaurant,
+    };
+    next();
   } catch {
     res.status(403).json({ message: 'Invalid or expired token' });
-    return;
   }
-
-  // Load the user document
-  const userDoc = await UserModel.findById(payload.userId).exec();
-  if (!userDoc) {
-    res.status(401).json({ message: 'User not found' });
-    return;
-  }
-
-  // Attach base user info
-  req.user = { id: payload.userId, role: payload.role };
-
-  // If this is a restaurant‑scoped role, add restaurant field
-  if ((Object.values(RestaurantRole) as string[]).includes(userDoc.role)) {
-    // @ts-ignore discriminator property
-    req.user.restaurant = (userDoc as any).restaurant.toString();
-  }
-
-  next();
 };
