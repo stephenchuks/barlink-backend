@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build: .
@@ -12,13 +10,16 @@ services:
       - redis
 
   mongo:
-    image: mongo:6
+    image: mongo:4.4
     restart: always
     ports:
       - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: barlink_db
     volumes:
       - mongo-data:/data/db
-    # we'll create users manually via mongosh (or later via init script)
 
   redis:
     image: redis:7
