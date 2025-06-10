@@ -6,10 +6,15 @@ export var OrderStatus;
     OrderStatus["Served"] = "served";
     OrderStatus["Paid"] = "paid";
 })(OrderStatus || (OrderStatus = {}));
+const OrderItemOptionSchema = new Schema({
+    label: { type: String, required: true },
+    price: { type: Number, required: true },
+}, { _id: false });
 const OrderItemSchema = new Schema({
     menuItem: { type: Schema.Types.ObjectId, ref: 'Menu', required: true },
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
+    options: { type: [OrderItemOptionSchema], default: [] },
 }, { _id: false });
 const OrderSchema = new Schema({
     restaurant: { type: Schema.Types.ObjectId, ref: 'Restaurant', required: true },

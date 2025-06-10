@@ -1,4 +1,4 @@
-// src/tests/auth.test.ts
+
 import request from 'supertest';
 import mongoose from 'mongoose';
 import app from '../app';                 // resolves to src/app.ts

@@ -1,4 +1,4 @@
-// src/types/roles.ts
+
 
 /**
  * Platform‑wide roles (multi‑tenant admin)

@@ -6,7 +6,6 @@ const toObjectId = (id) => new mongoose.Types.ObjectId(id);
  * POST /api/orders
  */
 export const createOrder = async (req, res) => {
-    // restaurant context from token
     const restaurantId = req.user.restaurant;
     const userId = req.user.id;
     const { items } = req.body;
@@ -14,8 +13,12 @@ export const createOrder = async (req, res) => {
         res.status(400).json({ message: 'Order items are required' });
         return;
     }
-    // compute total
-    const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+    // compute total (price + options)
+    const total = items.reduce((sum, item) => {
+        const base = item.quantity * item.price;
+        const addon = item.options?.reduce((acc, opt) => acc + opt.price, 0) ?? 0;
+        return sum + base + (addon * item.quantity);
+    }, 0);
     const order = await OrderModel.create({
         restaurant: toObjectId(restaurantId),
         user: toObjectId(userId),
@@ -23,6 +26,7 @@ export const createOrder = async (req, res) => {
             menuItem: toObjectId(i.menuItem),
             quantity: i.quantity,
             price: i.price,
+            options: i.options ?? [],
         })),
         total,
     });
@@ -33,12 +37,13 @@ export const createOrder = async (req, res) => {
  * GET /api/orders/:id
  */
 export const getOrder = async (req, res) => {
-    const order = await OrderModel.findById(req.params.id).exec();
+    const order = await OrderModel.findById(req.params.id)
+        .populate('items.menuItem') // for image, name, etc.
+        .exec();
     if (!order) {
         res.status(404).json({ message: 'Order not found' });
         return;
     }
-    // If customer, ensure they own it
     if (req.user.role === 'customer' && order.user.toString() !== req.user.id) {
         res.status(403).json({ message: 'Forbidden' });
         return;
@@ -52,6 +57,7 @@ export const getOrder = async (req, res) => {
 export const listRestaurantOrders = async (req, res) => {
     const restaurantId = req.params.id;
     const orders = await OrderModel.find({ restaurant: toObjectId(restaurantId) })
+        .populate('items.menuItem') // useful for dashboard
         .sort('-createdAt')
         .exec();
     res.status(200).json(orders);

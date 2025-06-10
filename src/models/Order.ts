@@ -1,4 +1,3 @@
-// src/models/Order.ts
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { RestaurantRole } from '../types/roles.js';
 
@@ -8,10 +7,16 @@ export enum OrderStatus {
   Paid    = 'paid',
 }
 
+export interface IOrderItemOption {
+  label: string;
+  price: number;
+}
+
 export interface IOrderItem {
   menuItem: mongoose.Types.ObjectId;
   quantity: number;
   price: number;
+  options?: IOrderItemOption[];
 }
 
 export interface IOrder extends Document {
@@ -24,11 +29,20 @@ export interface IOrder extends Document {
   updatedAt: Date;
 }
 
+const OrderItemOptionSchema = new Schema<IOrderItemOption>(
+  {
+    label: { type: String, required: true },
+    price: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
 const OrderItemSchema = new Schema<IOrderItem>(
   {
     menuItem: { type: Schema.Types.ObjectId, ref: 'Menu', required: true },
     quantity: { type: Number, required: true },
     price:    { type: Number, required: true },
+    options:  { type: [OrderItemOptionSchema], default: [] },
   },
   { _id: false }
 );

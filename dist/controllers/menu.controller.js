@@ -13,25 +13,37 @@ export const createMenu = async (req, res) => {
         res.status(400).json({ message: 'Restaurant context required' });
         return;
     }
-    const { title, description, items } = req.body;
-    if (!title) {
-        res.status(400).json({ message: 'Menu title is required' });
+    const { category, description, subcategories } = req.body;
+    if (!category?.name || !category?.slug) {
+        res.status(400).json({ message: 'Category name and slug are required' });
+        return;
+    }
+    if (!Array.isArray(subcategories)) {
+        res.status(400).json({ message: 'Subcategories are required' });
         return;
     }
     const menu = await MenuModel.create({
         restaurant: ensureObjectId(restaurantId),
-        title,
+        category: {
+            name: category.name.trim(),
+            slug: category.slug.trim().toLowerCase(),
+        },
         description,
-        items: Array.isArray(items) ? items : [],
+        subcategories,
     });
     res.status(201).json(menu);
 };
 /**
- * GET /api/menus
+ * GET /api/menus?slug=xyz
  */
 export const listMenus = async (req, res) => {
     const restaurantId = req.user.restaurant;
-    const menus = await MenuModel.find({ restaurant: restaurantId }).exec();
+    const slug = req.query.slug;
+    const query = { restaurant: restaurantId };
+    if (slug) {
+        query['category.slug'] = slug.toLowerCase();
+    }
+    const menus = await MenuModel.find(query).exec();
     res.status(200).json(menus);
 };
 /**
@@ -55,12 +67,18 @@ export const updateMenu = async (req, res) => {
         res.status(404).json({ message: 'Menu not found' });
         return;
     }
-    if (updates.title !== undefined)
-        menu.title = updates.title;
-    if (updates.description !== undefined)
+    if (updates.category?.name !== undefined) {
+        menu.category.name = updates.category.name.trim();
+    }
+    if (updates.category?.slug !== undefined) {
+        menu.category.slug = updates.category.slug.trim().toLowerCase();
+    }
+    if (updates.description !== undefined) {
         menu.description = updates.description;
-    if (updates.items !== undefined)
-        menu.items = updates.items;
+    }
+    if (updates.subcategories !== undefined) {
+        menu.subcategories = updates.subcategories;
+    }
     await menu.save();
     res.status(200).json(menu);
 };
@@ -74,76 +92,4 @@ export const deleteMenu = async (req, res) => {
         return;
     }
     res.status(200).json({ message: 'Menu deleted' });
-};
-/**
- * POST /api/menus/:menuId/items
- */
-export const createMenuItem = async (req, res) => {
-    const { menuId } = req.params;
-    const { name, description, price, available } = req.body;
-    if (!name || price == null) {
-        res.status(400).json({ message: 'name and price are required' });
-        return;
-    }
-    const menu = await MenuModel.findById(menuId).exec();
-    if (!menu) {
-        res.status(404).json({ message: 'Menu not found' });
-        return;
-    }
-    const newItem = {
-        _id: new mongoose.Types.ObjectId(),
-        name,
-        description,
-        price,
-        available: available ?? true,
-    };
-    menu.items.push(newItem);
-    await menu.save();
-    res.status(201).json(menu.items[menu.items.length - 1]);
-};
-/**
- * PUT /api/menus/:menuId/items/:itemId
- */
-export const updateMenuItem = async (req, res) => {
-    const { menuId, itemId } = req.params;
-    const updates = req.body;
-    const menu = await MenuModel.findById(menuId).exec();
-    if (!menu) {
-        res.status(404).json({ message: 'Menu not found' });
-        return;
-    }
-    const item = menu.items.find((i) => i._id.toString() === itemId);
-    if (!item) {
-        res.status(404).json({ message: 'Item not found' });
-        return;
-    }
-    if (updates.name !== undefined)
-        item.name = updates.name;
-    if (updates.description !== undefined)
-        item.description = updates.description;
-    if (updates.price !== undefined)
-        item.price = updates.price;
-    if (updates.available !== undefined)
-        item.available = updates.available;
-    await menu.save();
-    res.status(200).json(item);
-};
-/**
- * DELETE /api/menus/:menuId/items/:itemId
- */
-export const deleteMenuItem = async (req, res) => {
-    const { menuId, itemId } = req.params;
-    const menu = await MenuModel.findById(menuId).exec();
-    if (!menu) {
-        res.status(404).json({ message: 'Menu not found' });
-        return;
-    }
-    const idx = menu.items.findIndex((i) => i._id.toString() === itemId);
-    if (idx === -1) {
-        res.status(404).json({ message: 'Item not found' });
-        return;
-    }
-    menu.items.splice(idx, 1);
-    await menu.save();
-    res.status(200).json({ message: 'Item deleted' });
 };

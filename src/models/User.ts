@@ -1,4 +1,3 @@
-// src/models/User.ts
 import mongoose, { Schema, Document } from 'mongoose';
 import { PlatformRole, RestaurantRole, CustomerRole, AnyRole } from '../types/roles.js';
 

@@ -1,4 +1,3 @@
-// src/models/Restaurant.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IRestaurant extends Document {

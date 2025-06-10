@@ -1,4 +1,3 @@
-// src/routes/menu.routes.ts
 import { Router } from 'express';
 import {
   createMenu,
@@ -6,13 +5,11 @@ import {
   getMenu,
   updateMenu,
   deleteMenu,
-  createMenuItem,
-  updateMenuItem,
-  deleteMenuItem,
 } from '../controllers/menu.controller.js';
-import { asyncHandler }    from '../middleware/asyncHandler.js';
-import { verifyJWT }       from '../middleware/auth/verifyJWT.js';
-import { requireRole }     from '../middleware/auth/requireRole.js';
+
+import { asyncHandler } from '../middleware/asyncHandler.js';
+import { verifyJWT } from '../middleware/auth/verifyJWT.js';
+import { requireRole } from '../middleware/auth/requireRole.js';
 import { RestaurantRole, PlatformRole } from '../types/roles.js';
 
 const router = Router();
@@ -80,39 +77,6 @@ router.delete(
     allowSuperadmin: true,
   }),
   asyncHandler(deleteMenu),
-);
-
-// Create menu item
-router.post(
-  '/:menuId/items',
-  asyncHandler(verifyJWT),
-  requireRole({
-    allowedRoles: [RestaurantRole.Owner, RestaurantRole.Manager],
-    allowSuperadmin: true,
-  }),
-  asyncHandler(createMenuItem),
-);
-
-// Update menu item
-router.put(
-  '/:menuId/items/:itemId',
-  asyncHandler(verifyJWT),
-  requireRole({
-    allowedRoles: [RestaurantRole.Owner, RestaurantRole.Manager],
-    allowSuperadmin: true,
-  }),
-  asyncHandler(updateMenuItem),
-);
-
-// Delete menu item
-router.delete(
-  '/:menuId/items/:itemId',
-  asyncHandler(verifyJWT),
-  requireRole({
-    allowedRoles: [RestaurantRole.Owner, RestaurantRole.Manager],
-    allowSuperadmin: true,
-  }),
-  asyncHandler(deleteMenuItem),
 );
 
 export default router;

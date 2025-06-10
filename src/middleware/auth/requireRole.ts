@@ -1,4 +1,3 @@
-// src/middleware/auth/requireRole.ts
 import { Request, Response, NextFunction } from 'express';
 import { AnyRole, PlatformRole } from '../../types/roles.js';
 
@@ -22,7 +21,7 @@ export function requireRole(
   const normalizedAllowed = allowedRoles.map(r => r.toString().trim().toLowerCase());
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const user = req.user as { role?: string } | undefined;
+    const user = req.user;
     if (!user || !user.role) {
       res.status(401).json({ message: 'Unauthenticated' });
       return;
@@ -30,20 +29,25 @@ export function requireRole(
 
     const incoming = user.role.trim().toLowerCase();
 
-    // Superadmin bypass
+    // Allow Superadmin override
     if (allowSuperadmin && incoming === PlatformRole.Superadmin) {
       next();
       return;
     }
 
-    // Allowed restaurant roles
-    if (normalizedAllowed.includes(incoming)) {
-      next();
+    // Check if the role is allowed
+    if (!normalizedAllowed.includes(incoming)) {
+      res.status(403).json({ message: 'Forbidden: role not allowed' });
       return;
     }
 
-    // If we fall through, it’s forbidden
-    res.status(403).json({ message: 'Forbidden: insufficient privileges' });
-    return;
+    // If this is a restaurant-level role, enforce restaurant context exists
+    const isTenantRole = incoming !== PlatformRole.Superadmin.toLowerCase();
+    if (isTenantRole && !user.restaurant) {
+      res.status(403).json({ message: 'Forbidden: missing restaurant context' });
+      return;
+    }
+
+    next();
   };
 }

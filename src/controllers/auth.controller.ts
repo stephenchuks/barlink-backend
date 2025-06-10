@@ -1,4 +1,3 @@
-// src/controllers/auth.controller.ts
 import { RequestHandler } from 'express';
 import bcrypt from 'bcrypt';
 import jwt, { SignOptions, Secret } from 'jsonwebtoken';
@@ -26,7 +25,6 @@ export const register: RequestHandler = async (req, res) => {
     return;
   }
 
-  // is it a restaurant‑scoped role?
   const isRestaurantRole = Object.values(RestaurantRole).includes(role as RestaurantRole);
   if (isRestaurantRole && !restaurant) {
     res.status(400).json({ message: 'Restaurant ID is required for restaurant users' });
@@ -41,7 +39,6 @@ export const register: RequestHandler = async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10);
 
   if (isRestaurantRole) {
-    // use RestaurantUser discriminator
     await RestaurantUser.create({
       email,
       passwordHash,
@@ -49,7 +46,6 @@ export const register: RequestHandler = async (req, res) => {
       restaurant: new mongoose.Types.ObjectId(restaurant!),
     });
   } else {
-    // use PlatformUser discriminator
     await PlatformUser.create({
       email,
       passwordHash,
@@ -77,12 +73,11 @@ export const login: RequestHandler = async (req, res) => {
     return;
   }
 
-  // Build JWT payload
   const payload: Record<string, any> = {
     userId: user.id,
     role: user.role,
   };
-  // include restaurant for restaurant users
+
   if ((user as IRestaurantUser).restaurant) {
     payload.restaurant = (user as IRestaurantUser).restaurant.toString();
   }

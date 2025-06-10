@@ -1,4 +1,3 @@
-// src/middleware/asyncHandler.ts
 import { RequestHandler } from 'express';
 
 /**

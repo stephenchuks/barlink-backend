@@ -1,4 +1,5 @@
 node_modules
 .env
-mycript.ps1
+myscript.sh
 barlink-backend
+dist

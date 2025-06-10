@@ -1,10 +1,12 @@
-// src/controllers/user.controller.ts
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
-import UserModel, { RestaurantUser } from '../models/User.js';
-import { IRestaurantUser } from '../models/User.js';
+import UserModel, { RestaurantUser, IRestaurantUser } from '../models/User.js';
 import { RestaurantRole } from '../types/roles.js';
+import { canCreateRole } from '../utils/roleUtils.js';
+
+// Utility: Who can create what?
+
 
 /**
  * GET /api/users/me
@@ -28,11 +30,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 
 /**
  * POST /api/users
+ * Must be called by owner or manager
  */
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   const authId = (req.user as { id: string }).id;
 
-  // Load the creator as a RestaurantUser discriminator
+  // Load the authenticated user from DB
   const creator = await RestaurantUser.findById(authId).exec() as IRestaurantUser | null;
   if (!creator) {
     res.status(401).json({ message: 'Unauthenticated or not a restaurant user' });
@@ -40,6 +43,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   }
 
   const tenantId = creator.restaurant.toString();
+
   const { email, password, role, restaurant } = req.body as {
     email?: string;
     password?: string;
@@ -51,18 +55,25 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     res.status(400).json({ message: 'All fields are required' });
     return;
   }
+
   if (!Object.values(RestaurantRole).includes(role)) {
     res.status(400).json({ message: 'Invalid restaurant role' });
     return;
   }
-  if (creator.role === RestaurantRole.Manager && role === RestaurantRole.Owner) {
-    res.status(403).json({ message: 'Managers cannot create Owners' });
+
+  // Enforce role hierarchy
+  if (!canCreateRole(creator.role, role)) {
+    res.status(403).json({ message: `As a ${creator.role}, you cannot create a ${role}` });
     return;
   }
+
+  // Enforce tenant match
   if (tenantId !== restaurant) {
-    res.status(403).json({ message: 'Cannot create staff for another restaurant' });
+    res.status(403).json({ message: 'Cannot create users for another restaurant' });
     return;
   }
+
+  // Check if email already exists
   if (await UserModel.exists({ email })) {
     res.status(409).json({ message: 'Email already in use' });
     return;

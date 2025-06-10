@@ -8,6 +8,13 @@ import userRoutes from './routes/user.routes.js';
 import restaurantRoutes from './routes/restaurant.routes.js';
 import menuRoutes from './routes/menu.routes.js';
 import orderRoutes from './routes/order.routes.js';
+import promotionRoutes from './routes/promotion.routes.js';
+import favoriteRoutes from './routes/favorite.routes.js';
+import analyticsRoutes from './routes/analytics.routes.js';
+
+
+
+
 
 const app = express();
 
@@ -37,5 +44,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/menus', menuRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/promotions', promotionRoutes);
+app.use('/api/favorites', favoriteRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 export default app;

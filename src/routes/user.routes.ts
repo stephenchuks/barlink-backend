@@ -1,4 +1,4 @@
-// src/routes/user.routes.ts
+
 import { Router } from 'express';
 import { getMe, createUser } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middleware/auth/verifyJWT.js';

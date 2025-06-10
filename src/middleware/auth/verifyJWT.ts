@@ -1,4 +1,3 @@
-// src/middleware/auth/verifyJWT.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
